@@ -25,7 +25,8 @@ int main() {
     int keylen = 0;
     uint8 key[32] = {0x00};
     uint8 iv[25] = {0x00};
-
+    
+    //读取key
     FILE *key_in;
     key_in = fopen("key.txt","r");
     for (int i = 0; i < 32; i++)
@@ -35,7 +36,8 @@ int main() {
         key[i]=t;
     }
     fclose(key_in);
-
+    
+    //读取iv
     FILE *iv_in;
     iv_in = fopen("iv.txt","r");
     for (int i = 0; i < 25; i++)
@@ -45,7 +47,8 @@ int main() {
         iv[i]=t;
     }
     fclose(iv_in);
-
+    
+    //计算要生成的密钥字长度
     struct stat buf;
     stat("m.txt", &buf);
     if (buf.st_size * 8 % 32 == 0)
@@ -55,56 +58,55 @@ int main() {
     else
     {
         keylen = buf.st_size * 8 / 32 + 1;
-    }
+    }    
     
-    //测量时间的函数调用
-    struct timespec start;//读取开始时间
-    clock_gettime(CLOCK_MONOTONIC, &start);
-    
+    //生成密钥字
     Init(key, iv);
-
-    struct timespec end;//读取结束时间
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    double duration = (double)(end.tv_nsec-start.tv_nsec)/((double)1e9)+(double)(end.tv_sec-start.tv_sec);
-    printf("初始化时间为：%f\n",duration);
-    
     uint32 *keylist = KeyStream_Generator(keylen);
-    uint32 *cipher = (uint32 *)malloc(keylen * sizeof(uint32));
-    uint32 *u_cipher = (uint32 *)malloc(keylen * sizeof(uint32));
-    uint32 *m = (uint32 *)malloc(keylen * sizeof(uint32));
-
     printf("密钥字长度为：%d 密钥字流为：\n",keylen);
     for (int i = 0; i < keylen; i++)
     {
         printf("%08x\n", keylist[i]);
     }
     
+    //将keylist转换为一个8位的数组
+    uint8 *keylist_1 = (uint8 *)keylist;
+    // for (int  i = 0; i < keylen*4; i++)
+    // {
+    //     printf("%02x\n", keylist_1[i]);
+    // }
+    
+    //定义区
+    uint8 *m = (uint8 *)malloc(buf.st_size * sizeof(uint8));
+    uint8 *cipher = (uint8 *)malloc(buf.st_size * sizeof(uint8));
+    uint8 *u_cipher = (uint8 *)malloc(buf.st_size * sizeof(uint8));
+    
     //读取文件
     FILE *m_in;//读取文件的值放入32bit存储空间中
     m_in = fopen("m.txt","r");
-    fread(m,sizeof(uint32),keylen,m_in);
+    fread(m,sizeof(uint8),buf.st_size,m_in);
     fclose(m_in);    
 
     //加密
     printf("加密后的文件为：cipher.txt\n");
-    for (int i = 0; i < keylen; i++)
+    for (int i = 0; i < buf.st_size; i++)
     {
-        cipher[i] = keylist[i] ^ m[i];
+        cipher[i] = keylist_1[i] ^ m[i];
     }
     FILE *cipher_file;
     cipher_file = fopen("cipher.txt","w");
-    fwrite(cipher,sizeof(uint32),keylen,cipher_file);
+    fwrite(cipher,sizeof(uint8),buf.st_size,cipher_file);
     fclose(cipher_file);
     
     //解密
     printf("解密后的文件为：u_cipher.txt\n");
-    for (int i = 0; i < keylen; i++)
+    for (int i = 0; i < buf.st_size; i++)
     {
-        u_cipher[i] = keylist[i] ^ cipher[i];
+        u_cipher[i] = keylist_1[i] ^ cipher[i];
     }
     FILE *u_cipher_file;
     u_cipher_file = fopen("u_cipher.txt","w");
-    fwrite(u_cipher,sizeof(uint32),keylen,u_cipher_file);
+    fwrite(u_cipher,sizeof(uint8),buf.st_size,u_cipher_file);
     fclose(u_cipher_file);
 
     free(keylist);
