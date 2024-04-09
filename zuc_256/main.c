@@ -26,7 +26,7 @@ int main() {
     uint8 key[32] = {0x00};
     uint8 iv[25] = {0x00};
 
-    printf("请输入密钥流字长度\n");
+    printf("请输入密钥流字长度：\n");
     scanf("%d",&keylen);
 
     FILE *key_in;
@@ -49,10 +49,17 @@ int main() {
     }
     fclose(iv_in);
     
+    struct timespec start;
+    clock_gettime(CLOCK_MONOTONIC, &start);//测量开始
+
     Init(key, iv);
-    
     uint32 *keylist = KeyStream_Generator(keylen);
 
+    struct timespec end;
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double duration = (double)(end.tv_nsec-start.tv_nsec)/((double) 1e9) + (double)(end.tv_sec-start.tv_sec);
+    printf("时间为：%f\n",duration);//测量结束，显示数据
+    
     printf("密钥字长度为：%d 密钥字流为：\n",keylen);
     for (int i = 0; i < keylen; i++)
     {
